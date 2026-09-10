@@ -251,13 +251,26 @@ function renderNowPlaying(nowPlaying) {
   body.append(note);
 }
 
+function formatStamp(iso) {
+  const at = new Date(iso);
+  const date = at.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const time = at.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  return `${date} ${time}`;
+}
+
 function renderEvents(events) {
-  $('events').replaceChildren(...events.slice(0, 12).map((event) => {
+  $('events').replaceChildren(...events.slice(0, 40).map((event) => {
     const row = document.createElement('div');
     row.className = `event ${event.level}`;
 
     const time = document.createElement('time');
-    time.textContent = new Date(event.at).toLocaleTimeString();
+    time.dateTime = event.at;
+    time.title = new Date(event.at).toLocaleString();
+    time.textContent = formatStamp(event.at);
 
     const text = document.createElement('span');
     text.textContent = event.message;

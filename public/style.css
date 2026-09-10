@@ -186,9 +186,20 @@ button:disabled { opacity: 0.45; cursor: default; }
   white-space: nowrap;
 }
 
-.events { display: grid; gap: 6px; font-size: 12.5px; }
-.event { display: flex; gap: 10px; }
-.event time { color: var(--muted); flex: none; font-variant-numeric: tabular-nums; }
+.events {
+  display: grid;
+  gap: 6px;
+  font-size: 12.5px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.event { display: flex; gap: 12px; }
+.event time {
+  color: var(--muted);
+  flex: none;
+  min-width: 10.5em;
+  font-variant-numeric: tabular-nums;
+}
 .event.fired { color: var(--accent); }
 .event.error { color: var(--danger); }
 .event.skip, .event.warn { color: var(--warn); }
