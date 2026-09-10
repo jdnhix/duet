@@ -1,7 +1,6 @@
 # Duet
 
-When a song plays on Spotify, queue its partner next. Requires Premium.
-
+Some songs belong together - when a song plays on Spotify, queue its partner next.
 ## Setup
 
 Create an app at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) with
