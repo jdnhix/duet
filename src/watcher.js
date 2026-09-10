@@ -1,4 +1,5 @@
 import { isAuthed } from './auth.js';
+import { idleDelayMs } from './backoff.js';
 import { createChainTracker } from './chain.js';
 import { POLL_ACTIVE_MS, POLL_IDLE_MS, REPLAY_THRESHOLD_MS } from './config.js';
 import { log } from './log.js';
@@ -6,10 +7,12 @@ import { findEnabledRuleFor } from './rules.js';
 import { addToQueue, getPlayback, SpotifyError, toTrack } from './spotify.js';
 
 let timer = null;
+let ticking = false;
 let stopped = true;
 
 let lastSeen = null;    // { uri, progressMs } from the previous poll
 let nowPlaying = null;  // what the UI shows
+let idleSince = null;   // when playback last went quiet, for poll backoff
 
 const tracker = createChainTracker();
 
@@ -64,26 +67,30 @@ function handleSpotifyError(error, context) {
   logThrottled(`status-${error.status}`, 'error', `Failed ${context}: ${error.message}`);
 }
 
+/** Mark playback as quiet and return how long to wait before looking again. */
+function idle() {
+  nowPlaying = null;
+  if (idleSince === null) idleSince = Date.now();
+  return idleDelayMs(Date.now() - idleSince);
+}
+
 async function tick() {
-  if (!isAuthed()) {
-    nowPlaying = null;
-    return POLL_IDLE_MS;
-  }
+  if (!isAuthed()) return idle();
 
   let state;
   try {
     state = await getPlayback();
   } catch (error) {
     handleSpotifyError(error, 'reading playback');
-    return POLL_IDLE_MS;
+    return idle();
   }
 
   if (!state?.item || state.item.type !== 'track') {
-    nowPlaying = null;
     lastSeen = null;
-    return POLL_IDLE_MS;
+    return idle();
   }
 
+  idleSince = null;
   const track = toTrack(state.item);
   nowPlaying = {
     ...track,
@@ -100,11 +107,14 @@ async function tick() {
   lastSeen = { uri: track.uri, progressMs: nowPlaying.progressMs };
   if (isNewPlay) await onTrackStarted(track);
 
+  // A paused track keeps the short interval; only a dead player backs off.
   return nowPlaying.isPlaying ? POLL_ACTIVE_MS : POLL_IDLE_MS;
 }
 
 async function loop() {
   if (stopped) return;
+  timer = null;
+  ticking = true;
 
   let delay = POLL_IDLE_MS;
   try {
@@ -113,7 +123,16 @@ async function loop() {
     log('error', `Watcher tick failed: ${error.message}`);
   }
 
-  if (!stopped) timer = setTimeout(loop, delay);
+  ticking = false;
+  // A wake() during the tick may already have queued the next run.
+  if (!stopped && timer === null) timer = setTimeout(loop, delay);
+}
+
+/** Poll now instead of waiting out a long backoff. */
+function wake() {
+  if (stopped || ticking) return;
+  clearTimeout(timer);
+  timer = setTimeout(loop, 0);
 }
 
 export function start() {
@@ -131,6 +150,9 @@ export function stop() {
 /** Called when rules change so a stale chain does not suppress a new pair. */
 export function resetChain() {
   tracker.reset();
+  // Drop the backoff and look again now, so an edit takes effect immediately.
+  idleSince = null;
+  wake();
 }
 
 export function getNowPlaying() {
