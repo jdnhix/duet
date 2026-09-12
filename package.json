@@ -6,6 +6,7 @@
   "description": "Pair your songs. When one plays on Spotify, its partner is queued next.",
   "scripts": {
     "start": "node src/index.js",
+    "start:awake": "caffeinate -is node src/index.js",
     "test": "node --test test/"
   },
   "dependencies": {

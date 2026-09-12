@@ -15,6 +15,11 @@ npm start
 
 Open <http://127.0.0.1:8787>, connect Spotify, pair two songs.
 
+macOS suspends the watcher when the machine sleeps. To keep it polling with the lid shut, run
+`npm run start:awake` instead — it wraps the app in `caffeinate -is`, which stops the Mac sleeping
+at all while it runs. Only holds on AC power, and the machine stays fully awake, so mind the heat
+if it lives in a bag.
+
 ## Notes
 
 - Spotify has no reorder or remove queue API, only add. The partner goes in ahead of the playlist's
